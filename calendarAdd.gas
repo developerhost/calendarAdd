@@ -1,0 +1,97 @@
+function createSchedule() {
+
+  // 読み取り範囲（表の始まり行と終わり列）
+  const topRow = 2;
+  const lastCol = 6;
+  
+  // 0始まりで列を関数で保持
+  const titleCellNum = 0;
+  const dayCellNum = 1;
+  const startCellNum = 2;
+  const endCellNum = 3;
+  const desCellNum = 4;
+  const locateCellNum = 5;
+  const statusCellNum = 6;
+  
+  //シートを取得
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("カレンダー登録");
+  var registerName = sheet.getRange('I1').getValue();
+  var registerMail = sheet.getRange('I2').getValue();
+  
+  // 予定の最終行を取得
+  var lastRow = sheet.getLastRow();
+  
+  //予定の一覧を取得
+  var contents = sheet.getRange(topRow, 1, lastRow, lastCol).getValues();
+  
+  // googleカレンダーの取得
+  var calendar = CalendarApp.getCalendarById(registerMail);
+  
+  //順に予定を作成
+  for (i = 0; i <= lastRow -topRow; i++) {
+  
+    //済か空の場合は飛ばす
+    var status = contents[i][statusCellNum];
+    if (
+      status == "済" ||
+      status == "済み" ||
+      status == "OK" ||
+      contents[i][dayCellNum] == ""
+    
+    ) {
+    continue;
+    }
+    
+    //値をセット　日時はフォーマットして保存
+    var day = new Date(contents[i][dayCellNum]);
+    var startTime = contents[i][startCellNum];
+    var endTime = contents[i][endCellNum];
+    var title = contents[i][titleCellNum];
+    
+    //場所と詳細をセット
+    var options = {location: contents[i][locateCellNum], description: contents[i][desCellNum]};
+    
+    try {
+      
+      //開始終了がなければ終日で設定
+      if (startTime == '' || endTime == '') {
+        //予定を作成
+        calendar.createAllDayEvent(
+        title,
+        new Date(day),
+        options
+        );
+        
+        // 開始終了時間があれば範囲で設定
+      } else {
+        //　開始日時をフォーマット
+        var startDate = new Date(day);
+        startDate.setHours(startTime.getHours())
+        startDate.setMinutes(startTime.getMinutes());
+        
+        //終了日時をフォーマット
+        var endDate = new Date(day);
+        endDate.setHours(endTime.getHours())
+        endDate.setMinutes(endTime.getMinutes());
+        
+        // 予定を作成
+        calendar.createEvent(
+          title,
+          startDate,
+          endDate,
+          options
+        );
+      }
+      
+      //無事に予定が作成されたら「済」にする
+      sheet.getRange(topRow + i, 7).setValue("済");
+      
+      // エラーの場合（今回はログ出力のみ）
+    } catch(e) {
+      Logger.log(e);
+    }
+    
+  }
+  // ブラウザへ完了通知
+  Browser.msgBox("カレンダー登録完了しました");
+}
